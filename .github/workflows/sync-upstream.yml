@@ -1,0 +1,25 @@
+name: Sync with the upstream repository
+
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Sync the upstream's repository contents
+        run: gh repo sync "cavcrosby/aws-cli"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Trigger container image builds
+        run: ./scripts/trigger-image-builds
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

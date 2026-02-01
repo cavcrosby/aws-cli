@@ -13,10 +13,16 @@ RUN dnf update -y \
 
 FROM public.ecr.aws/amazonlinux/amazonlinux:2023
 RUN dnf update -y \
-  && dnf install -y less groff findutils jq \
+  && dnf install -y less groff findutils jq shadow-utils \
   && dnf clean all
 COPY --from=installer /usr/local/aws-cli/ /usr/local/aws-cli/
 COPY --from=installer /aws-cli-bin/ /usr/local/bin/
 WORKDIR /aws
+RUN <<_EOF_
+groupadd --gid 1000 aws
+useradd --create-home --uid 1000 --gid 1000 aws
+_EOF_
+
+USER aws
 ENTRYPOINT ["/usr/local/bin/aws"]
 

@@ -2,12 +2,21 @@
 aws-cli
 =======
 
-.. image:: https://github.com/aws/aws-cli/actions/workflows/run-tests.yml/badge.svg
-   :target: https://github.com/aws/aws-cli/actions/workflows/run-tests.yml
+.. image:: https://github.com/cavcrosby/aws-cli/actions/workflows/build-images.yml/badge.svg
+   :target: https://github.com/cavcrosby/aws-cli/actions/workflows/build-images.yml
    :alt: Build Status
 
 
 This package provides a unified command line interface to Amazon Web Services.
+
+----
+Fork
+----
+
+This fork is solely intended to be used to build container images of the AWS CLI that come
+with a non-root user. Unfortunately, several years have passed, and AWS hasn't gotten
+around to this despite an `issue <https://github.com/aws/aws-cli/issues/5120>`__ existing for this.
+
 
 The aws-cli package works on Python versions:
 
