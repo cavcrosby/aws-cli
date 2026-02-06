@@ -2,6 +2,54 @@
 CHANGELOG
 =========
 
+2.33.16
+=======
+
+* api-change:``ram``: Added ListSourceAssociations API. Allows RAM resource share owners to list source associations that determine which sources can access resources through service principal associations. Supports filtering by resource share ARN, source ID, source type, or status, with pagination.
+* api-change:``workspaces``: Added support for 12 new graphics-optimized compute types - Graphics.g6 (xlarge, 2xlarge, 4xlarge, 8xlarge, 16xlarge), Graphics.gr6 (4xlarge, 8xlarge), Graphics.g6f (large, xlarge, 2xlarge, 4xlarge), and Graphics.gr6f (4xlarge).
+* api-change:``medialive``: Outputs using the AV1 codec in CMAF Ingest output groups in MediaLive now have the ability to specify a target bit depth of 8 or 10.
+* api-change:``transfer``: Adds support for the customer to send custom HTTP headers and configure an AS2 Connector to receive Asynchronous MDNs from their trading partner
+* api-change:``neptune-graph``: Minor neptune-graph documentation changes
+* api-change:``bedrock-agentcore-control``: Support Browser profile persistence (cookies and local storage) across sessions for AgentCore Browser.
+* api-change:``athena``: Reduces the minimum TargetDpus to create or update capacity reservations from 24 to 4.
+* api-change:``arc-region-switch``: Updates documentation for ARC Region switch and provides stronger validation for Amazon Aurora Global Database execution block parameters.
+* api-change:``glue``: This release adds the capability to easily create custom AWS Glue connections to data sources with REST APIs.
+* api-change:``bedrock-agentcore``: Support Browser profile persistence (cookies and local storage) across sessions for AgentCore Browser.
+
+
+2.33.15
+=======
+
+* api-change:``medialive``: AWS Elemental MediaLive now supports SRT listener mode for inputs and outputs, in addition to the existing SRT caller mode.
+* api-change:``connectcases``: Amazon Connect Cases now supports larger, multi-line text fields with up to 4,100 characters. Administrators can use the Admin UI to select the appropriate configuration (single-line or multi-line) on a per-field basis, improving case documentation capabilities.
+* api-change:``eks``: Update delete cluster description
+* api-change:``workspaces-web``: Support for configuring and managing custom domain names for WorkSpaces Secure Browser portals.
+* api-change:``redshift``: We have increased the maximum duration for a deferred maintenance window from 45 days to 60 days for Amazon Redshift provisioned clusters. This enhancement provides customers with greater flexibility in scheduling patching and maintenance activities while also maintaining security compliance.
+* api-change:``bedrock-runtime``: Added support for structured outputs to Converse and ConverseStream APIs.
+* enhancement:Autocomplete: Updated completion models for 10 services
+
+
+2.33.14
+=======
+
+* api-change:``organizations``: Updated the CloseAccount description.
+* api-change:``geo-maps``: Added support for optional style parameters in maps, including 3D terrain and 3D Buildings
+* api-change:``dynamodb``: This change supports the creation of multi-account global tables. It adds two new arguments to CreateTable, GlobalTableSourceArn and GlobalTableSettingsReplicationMode. DescribeTable is also updated to include information about GlobalTableSettingsReplicationMode.
+* api-change:``marketplace-catalog``: Adds support for Catalog API us-east-1 dualstack endpoint catalog-marketplace.us-east-1.api.aws
+* bugfix:installer: Remove unnecessary .dist-info directories from executable
+* api-change:``kinesis``: Adds StreamId parameter to AWS Kinesis Data Streams APIs that is reserved for future use.
+* api-change:``batch``: AWS Batch Array Job Visibility feature support. Includes new statusSummaryLastUpdatedAt for array job parent DescribeJobs responses for the last time the statusSummary was updated. Includes both statusSummary and statusSummaryLastUpdatedAt in ListJobs responses for array job parents.
+* api-change:``sso-admin``: Added new Region management APIs to support multi-Region replication in IAM Identity Center.
+
+
+2.33.13
+=======
+
+* api-change:``bedrock-agentcore-control``: Adds tagging support for AgentCore Evaluations (evaluator and online evaluation config)
+* api-change:``mpa``: Updates to multi-party approval (MPA) service to add support for multi-factor authentication (MFA) for voting operations.
+* api-change:``cloudfront``: Add OriginMTLS support to CloudFront Distribution APIs
+
+
 2.33.12
 =======
 
