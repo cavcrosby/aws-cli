@@ -44,8 +44,26 @@ gh_tags="$(\
 
 for gh_tag in ${gh_tags}; do
     if is_ge_version "${gh_tag}" "2.33.12"; then
-        if ! printf '%s\n' "$(printf '%s\n' "${dockerhub_tags}" | jq --raw-output '.results[] | .name')" | grep --quiet "${gh_tag}"; then
-            if [ "${gh_tag}" = "$(printf '%s\n' "${gh_tags}" | sort --version-sort | tail --lines 1)" ]; then
+        if ! \
+            printf \
+            '%s\n' \
+            "$(\
+                printf \
+                '%s\n' \
+                "${dockerhub_tags}" \
+                | jq --raw-output '.results[] | .name' \
+            )" \
+            | grep --quiet "${gh_tag}";
+        then
+            if [ "${gh_tag}" = \
+                "$(\
+                    printf \
+                        '%s\n' \
+                        "${gh_tags}" \
+                        | sort --version-sort \
+                        | tail --lines 1 \
+                )" \
+            ]; then
                 gh workflow run \
                     --repo "cavcrosby/aws-cli" \
                     --field version="${gh_tag}" \
