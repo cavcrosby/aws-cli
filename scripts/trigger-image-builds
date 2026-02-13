@@ -43,6 +43,7 @@ gh_tags="$(\
 )"
 
 for gh_tag in ${gh_tags}; do
+    # version 2.33.12 is the starting/base version to build
     if is_ge_version "${gh_tag}" "2.33.12"; then
         if ! \
             printf \
