@@ -29,11 +29,49 @@ if ! [ "${GITHUB_ACTIONS}" ]; then
     exit 1
 fi
 
-dockerhub_tags="$(\
-    curl \
-        --silent \
-        "https://hub.docker.com/v2/namespaces/cavcrosby/repositories/aws-cli/tags" \
+counter=1
+paginate="$(\
+    curl --silent "https://hub.docker.com/v2/namespaces/cavcrosby/repositories/aws-cli/tags?page=${counter}&&page_size=100" \
 )"
+while \
+    ! printf \
+        '%s\n' \
+        "${paginate}" \
+        | yq \
+            --exit-status \
+            --input-format "json" \
+            '.message' \
+            > "/dev/null" \
+            2>&1; \
+    do
+        # shellcheck disable=SC2016 # yq exp does not need expansion
+        dockerhub_tags="$(\
+            yq eval-all \
+                --input-format "json" \
+                --output-format "json" \
+                '. as $item ireduce ({}; . * $item)' \
+                <(printf '%s\n' "${dockerhub_tags}") \
+                <(printf '%s\n' "${paginate}") \
+        )"
+
+        : $(( counter++ ))
+        paginate="$(\
+            curl \
+                --silent \
+                "https://hub.docker.com/v2/namespaces/cavcrosby/repositories/aws-cli/tags?page=${counter}&&page_size=100" \
+        )"
+done
+
+msg="$(printf '%s\n' "${paginate}" | yq --input-format "json" '.message')"
+if [ "${msg}" != "httperror 404: object not found" ]; then
+        printf \
+            '%s: %s\n' \
+            "${PROGNAME}" \
+            "Docker Hub potentially returned a non-404 status message: ${msg}" \
+            >&2
+
+        exit 1
+fi
 
 gh_tags="$(\
     gh api \
@@ -41,7 +79,6 @@ gh_tags="$(\
         "repos/aws/aws-cli/tags" \
         | yq --input-format "json" '[.[]] | flatten | .[].name' \
 )"
-
 for gh_tag in ${gh_tags}; do
     # version 2.33.12 is the starting/base version to build
     if is_ge_version "${gh_tag}" "2.33.12"; then
