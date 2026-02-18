@@ -39,7 +39,7 @@ gh_tags="$(\
     gh api \
         --paginate \
         "repos/aws/aws-cli/tags" \
-        | jq --raw-output '.[] | .name' \
+        | yq --input-format "json" '[.[]] | flatten | .[].name' \
 )"
 
 for gh_tag in ${gh_tags}; do
@@ -52,7 +52,7 @@ for gh_tag in ${gh_tags}; do
                 printf \
                 '%s\n' \
                 "${dockerhub_tags}" \
-                | jq --raw-output '.results[] | .name' \
+                | yq '.results[] | .name' \
             )" \
             | grep --quiet "${gh_tag}";
         then
