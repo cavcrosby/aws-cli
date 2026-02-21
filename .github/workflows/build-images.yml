@@ -15,7 +15,7 @@ on:
         default: false
 
 jobs:
-  docker:
+  docker-hub:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6

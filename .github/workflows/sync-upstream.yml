@@ -6,7 +6,7 @@ on:
   workflow_dispatch: {}
 
 jobs:
-  sync:
+  sync-upstream:
     runs-on: ubuntu-latest
     permissions:
       actions: write
