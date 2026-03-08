@@ -23,6 +23,6 @@ groupadd --gid 1000 aws
 useradd --create-home --uid 1000 --gid 1000 aws
 _EOF_
 
-USER aws
+USER 1000
 ENTRYPOINT ["/usr/local/bin/aws"]
 
