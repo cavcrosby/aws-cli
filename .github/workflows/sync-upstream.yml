@@ -12,11 +12,17 @@ jobs:
       actions: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.ACCESS_TOKEN }}
 
       - name: Sync the upstream's repository contents
-        run: gh repo sync "cavcrosby/aws-cli"
-        env:
-          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        run: |
+          git remote add --fetch "upstream" "https://github.com/aws/aws-cli.git"
+          git config "user.name" "github-actions[bot]"
+          git config "user.email" "41898282+github-actions[bot]@users.noreply.github.com"
+          git merge "upstream/v2"
+          git push "origin" "v2"
           
       - name: Trigger container image builds
         run: ./scripts/trigger-image-builds
