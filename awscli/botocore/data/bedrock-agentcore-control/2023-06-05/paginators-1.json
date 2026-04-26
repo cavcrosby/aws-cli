@@ -107,6 +107,24 @@
       "output_token": "nextToken",
       "limit_key": "maxResults",
       "result_key": "profileSummaries"
+    },
+    "ListRegistries": {
+      "input_token": "nextToken",
+      "output_token": "nextToken",
+      "limit_key": "maxResults",
+      "result_key": "registries"
+    },
+    "ListRegistryRecords": {
+      "input_token": "nextToken",
+      "output_token": "nextToken",
+      "limit_key": "maxResults",
+      "result_key": "registryRecords"
+    },
+    "ListHarnesses": {
+      "input_token": "nextToken",
+      "output_token": "nextToken",
+      "limit_key": "maxResults",
+      "result_key": "harnesses"
     }
   }
 }

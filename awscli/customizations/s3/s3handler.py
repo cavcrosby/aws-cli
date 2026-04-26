@@ -13,6 +13,7 @@
 import logging
 import os
 
+from s3transfer.checksums import resolve_full_object_checksum
 from s3transfer.manager import TransferManager
 
 from awscli.compat import get_binary_stdin
@@ -39,6 +40,7 @@ from awscli.customizations.s3.subscribers import (
     DeleteSourceObjectSubscriber,
     DirectoryCreatorSubscriber,
     ProvideETagSubscriber,
+    ProvideFullObjectChecksumSubscriber,
     ProvideLastModifiedTimeSubscriber,
     ProvideSizeSubscriber,
     ProvideUploadContentTypeSubscriber,
@@ -433,6 +435,14 @@ class DownloadRequestSubmitter(BaseTransferRequestSubmitter):
                     fileinfo.case_conflict_key,
                 )
             )
+        if fileinfo.associated_response_data:
+            checksum_info = resolve_full_object_checksum(
+                fileinfo.associated_response_data
+            )
+            if checksum_info is not None:
+                subscribers.append(
+                    ProvideFullObjectChecksumSubscriber(checksum_info)
+                )
 
     def _submit_transfer_request(self, fileinfo, extra_args, subscribers):
         bucket, key = find_bucket_key(fileinfo.src)
@@ -629,9 +639,7 @@ class LocalDeleteRequestSubmitter(BaseTransferRequestSubmitter):
             self._result_queue.put(SuccessResult(**result_kwargs))
         except Exception as e:
             self._result_queue.put(FailureResult(exception=e, **result_kwargs))
-        finally:
-            # Return True to indicate that the transfer was submitted
-            return True
+        return True
 
     def _format_src_dest(self, fileinfo):
         return self._format_local_path(fileinfo.src), None

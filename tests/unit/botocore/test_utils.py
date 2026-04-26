@@ -18,6 +18,7 @@ import io
 import operator
 from contextlib import contextmanager
 from sys import getrefcount
+from unittest.mock import Mock
 
 import botocore
 import pytest
@@ -1625,7 +1626,7 @@ class TestS3RegionRedirector(unittest.TestCase):
                 'rules': [],
             },
             partition_data={},
-            service_model=None,
+            service_model=Mock(service_name='test'),
             builtins={},
             client_context=None,
             event_emitter=None,
@@ -3635,6 +3636,7 @@ class TestSSOTokenFetcher(unittest.TestCase):
             expiresAt=self._expires_at(600),
             verificationUri='https://sso.fake/device',
             verificationUriComplete='https://sso.fake/device?user_code=foo',
+            cross_device_flag=None,
         )
 
     def test_fetch_token_authorization_expires(self):
@@ -3864,11 +3866,13 @@ def test_lru_cache_weakref():
     cls2 = ClassWithCachedMethod()
 
     assert cls1.cached_fn.cache_info().currsize == 0
-    assert getrefcount(cls1) == 2
-    assert getrefcount(cls2) == 2
-    # "The count returned is generally one higher than you might expect, because
-    # it includes the (temporary) reference as an argument to getrefcount()."
-    # https://docs.python.org/3.8/library/sys.html#getrefcount
+    # Ensure classes retain references. getrefcount is only reliable
+    # for 0 (no references) or 1+ (has references).
+    # https://docs.python.org/3.14/library/sys.html#sys.getrefcount
+    cls1_refcount = getrefcount(cls1)
+    cls2_refcount = getrefcount(cls2)
+    assert cls1_refcount > 0
+    assert cls2_refcount > 0
 
     cls1.cached_fn(1, 1)
     cls2.cached_fn(1, 1)
@@ -3876,8 +3880,8 @@ def test_lru_cache_weakref():
     # The cache now has two entries, but the reference count remains the same as
     # before.
     assert cls1.cached_fn.cache_info().currsize == 2
-    assert getrefcount(cls1) == 2
-    assert getrefcount(cls2) == 2
+    assert getrefcount(cls1) == cls1_refcount
+    assert getrefcount(cls2) == cls2_refcount
 
     # Deleting one of the objects does not interfere with the cache entries
     # related to the other object.

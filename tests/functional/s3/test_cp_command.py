@@ -44,6 +44,10 @@ class BaseCPCommandTest(BaseS3TransferCommandTest):
 
 
 class TestCPCommand(BaseCPCommandTest):
+    def setUp(self):
+        super().setUp()
+        self.multipart_threshold = 8 * MB
+
     def test_operations_used_in_upload(self):
         full_path = self.files.create_file('foo.txt', 'mycontent')
         cmdline = '%s %s s3://bucket/key.txt' % (self.prefix, full_path)
@@ -411,7 +415,7 @@ class TestCPCommand(BaseCPCommandTest):
     ):
         cmdline = f'{self.prefix} s3://bucket1/key.txt s3://bucket/key.txt --no-overwrite'
         self.parsed_responses = [
-            self.head_object_response(ContentLength=5), 
+            self.head_object_response(ContentLength=5),
             self.precondition_failed_error_response(),
         ]
         self.run_cmd(cmdline, expected_rc=0)
@@ -532,6 +536,7 @@ class TestCPCommand(BaseCPCommandTest):
                     {
                         'Bucket': 'bucket',
                         'Key': 'key.txt',
+                        'ChecksumMode': 'ENABLED',
                     },
                 )
             ]
@@ -573,6 +578,7 @@ class TestCPCommand(BaseCPCommandTest):
                     {
                         'Bucket': 'bucket',
                         'Key': 'key.txt',
+                        'ChecksumMode': 'ENABLED',
                     },
                 )
             ]
@@ -978,8 +984,16 @@ class TestCPCommand(BaseCPCommandTest):
         self.run_cmd(cmdline, expected_rc=0)
         self.assertEqual(len(self.operations_called), 2)
         self.assertEqual(self.operations_called[0][0].name, 'HeadObject')
-        self.assertEqual(self.operations_called[1][0].name, 'CopyObject')
+        expected_head_args = {
+            'Bucket': 'bucket-one',
+            'Key': 'key.txt',
+            'ChecksumMode': 'ENABLED',
+            'SSECustomerAlgorithm': 'AES256',
+            'SSECustomerKey': key_contents,
+        }
+        self.assertDictEqual(self.operations_called[0][1], expected_head_args)
 
+        self.assertEqual(self.operations_called[1][0].name, 'CopyObject')
         expected_args = {
             'Key': 'key.txt',
             'Bucket': 'bucket',
@@ -988,6 +1002,189 @@ class TestCPCommand(BaseCPCommandTest):
             'CopySourceSSECustomerKey': key_contents,
         }
         self.assertDictEqual(self.operations_called[1][1], expected_args)
+
+    def test_s3s3_cp_with_destination_sse_c(self):
+        """S3->S3 copy with an unencrypted source and encrypted destination"""
+        self.parsed_responses = [
+            self.head_object_response(),
+            self.copy_object_response(),
+        ]
+        cmdline = (
+            '%s s3://bucket-one/key.txt s3://bucket/key.txt '
+            '--sse-c --sse-c-key destination-key' % self.prefix
+        )
+        self.run_cmd(cmdline, expected_rc=0)
+        self.assertEqual(len(self.operations_called), 2)
+        self.assertEqual(self.operations_called[0][0].name, 'HeadObject')
+        expected_head_args = {
+            'Bucket': 'bucket-one',
+            'Key': 'key.txt',
+            'ChecksumMode': 'ENABLED',
+            # don't expect to see SSE-c params for the source
+        }
+        self.assertDictEqual(self.operations_called[0][1], expected_head_args)
+
+        self.assertEqual(self.operations_called[1][0].name, 'CopyObject')
+        expected_copy_args = {
+            'Key': 'key.txt',
+            'Bucket': 'bucket',
+            'CopySource': {'Bucket': 'bucket-one', 'Key': 'key.txt'},
+            'SSECustomerAlgorithm': 'AES256',
+            'SSECustomerKey': 'destination-key',
+        }
+        self.assertDictEqual(self.operations_called[1][1], expected_copy_args)
+
+    def test_s3s3_cp_with_different_sse_c_keys(self):
+        """S3->S3 copy with different SSE-C keys for source and destination"""
+        self.parsed_responses = [
+            self.head_object_response(),
+            self.copy_object_response(),
+        ]
+        cmdline = (
+            '%s s3://bucket-one/key.txt s3://bucket/key.txt '
+            '--sse-c-copy-source --sse-c-copy-source-key foo --sse-c --sse-c-key bar'
+            % self.prefix
+        )
+        self.run_cmd(cmdline, expected_rc=0)
+        self.assertEqual(len(self.operations_called), 2)
+        self.assertEqual(self.operations_called[0][0].name, 'HeadObject')
+        expected_head_args = {
+            'Bucket': 'bucket-one',
+            'Key': 'key.txt',
+            'ChecksumMode': 'ENABLED',
+            'SSECustomerAlgorithm': 'AES256',
+            'SSECustomerKey': 'foo',
+        }
+        self.assertDictEqual(self.operations_called[0][1], expected_head_args)
+
+        self.assertEqual(self.operations_called[1][0].name, 'CopyObject')
+        expected_copy_args = {
+            'Key': 'key.txt',
+            'Bucket': 'bucket',
+            'CopySource': {'Bucket': 'bucket-one', 'Key': 'key.txt'},
+            'SSECustomerAlgorithm': 'AES256',
+            'SSECustomerKey': 'bar',
+            'CopySourceSSECustomerAlgorithm': 'AES256',
+            'CopySourceSSECustomerKey': 'foo',
+        }
+        self.assertDictEqual(self.operations_called[1][1], expected_copy_args)
+
+    def test_s3s3_cp_with_destination_sse_c_multipart(self):
+        """S3->S3 multipart copy with unencrypted source and encrypted destination"""
+        self.parsed_responses = [
+            self.head_object_response(ContentLength=self.multipart_threshold),
+            self.get_object_tagging_response({}),
+            self.create_mpu_response('upload_id'),
+            self.upload_part_copy_response(),
+            self.complete_mpu_response(),
+        ]
+        cmdline = (
+            '%s s3://bucket-one/key.txt s3://bucket/key.txt '
+            '--sse-c --sse-c-key destination-key' % self.prefix
+        )
+        self.run_cmd(cmdline, expected_rc=0)
+        self.assert_operations_called(
+            [
+                self.head_object_request(
+                    'bucket-one',
+                    'key.txt',
+                    ChecksumMode='ENABLED',
+                    # no SSE-C params — source is unencrypted
+                ),
+                ('GetObjectTagging', mock.ANY),
+                self.create_mpu_request(
+                    'bucket',
+                    'key.txt',
+                    SSECustomerAlgorithm='AES256',
+                    SSECustomerKey='destination-key',
+                ),
+                self.upload_part_copy_request(
+                    'bucket-one',
+                    'key.txt',
+                    'bucket',
+                    'key.txt',
+                    'upload_id',
+                    PartNumber=mock.ANY,
+                    CopySourceRange=mock.ANY,
+                    CopySourceIfMatch='"foo-1"',
+                    SSECustomerAlgorithm='AES256',
+                    SSECustomerKey='destination-key',
+                ),
+                self.complete_mpu_request(
+                    'bucket',
+                    'key.txt',
+                    'upload_id',
+                    num_parts=1,
+                    SSECustomerAlgorithm='AES256',
+                    SSECustomerKey='destination-key',
+                ),
+            ]
+        )
+
+    def test_s3s3_cp_with_different_sse_c_keys_multipart(self):
+        """S3->S3 multipart copy with different SSE-C keys"""
+        self.parsed_responses = [
+            self.head_object_response(ContentLength=self.multipart_threshold),
+            self.get_object_tagging_response({}),
+            self.create_mpu_response('upload_id'),
+            self.upload_part_copy_response(),
+            self.complete_mpu_response(),
+        ]
+        cmdline = (
+            '%s s3://bucket-one/key.txt s3://bucket/key.txt '
+            '--sse-c-copy-source --sse-c-copy-source-key source-key --sse-c --sse-c-key destination-key'
+            % self.prefix
+        )
+        self.run_cmd(cmdline, expected_rc=0)
+        self.assertEqual(self.operations_called[0][0].name, 'HeadObject')
+        expected_head_args = {
+            'Bucket': 'bucket-one',
+            'Key': 'key.txt',
+            'ChecksumMode': 'ENABLED',
+            'SSECustomerAlgorithm': 'AES256',
+            'SSECustomerKey': 'source-key',
+        }
+        self.assertDictEqual(self.operations_called[0][1], expected_head_args)
+        self.assert_operations_called(
+            [
+                self.head_object_request(
+                    'bucket-one',
+                    'key.txt',
+                    ChecksumMode='ENABLED',
+                    SSECustomerAlgorithm='AES256',
+                    SSECustomerKey='source-key',
+                ),
+                ('GetObjectTagging', mock.ANY),
+                self.create_mpu_request(
+                    'bucket',
+                    'key.txt',
+                    SSECustomerAlgorithm='AES256',
+                    SSECustomerKey='destination-key',
+                ),
+                self.upload_part_copy_request(
+                    'bucket-one',
+                    'key.txt',
+                    'bucket',
+                    'key.txt',
+                    'upload_id',
+                    PartNumber=mock.ANY,
+                    CopySourceRange=mock.ANY,
+                    CopySourceIfMatch='"foo-1"',
+                    SSECustomerAlgorithm='AES256',
+                    SSECustomerKey='destination-key',
+                    CopySourceSSECustomerAlgorithm='AES256',
+                    CopySourceSSECustomerKey='source-key',
+                ),
+                self.complete_mpu_request(
+                    'bucket',
+                    'key.txt',
+                    'upload_id',
+                    num_parts=1,
+                    SSECustomerAlgorithm='AES256',
+                    SSECustomerKey='destination-key',
+                ),
+            ]
+        )
 
     # Note ideally the kms sse with a key id would be integration tests
     # However, you cannot delete kms keys so there would be no way to clean
@@ -1170,6 +1367,33 @@ class TestCPCommand(BaseCPCommandTest):
             self.operations_called[0][1]['ChecksumAlgorithm'], 'CRC32'
         )
 
+    def test_upload_with_checksum_algorithm_sha1(self):
+        full_path = self.files.create_file('foo.txt', 'contents')
+        cmdline = f'{self.prefix} {full_path} s3://bucket/key.txt --checksum-algorithm SHA1'
+        self.run_cmd(cmdline, expected_rc=0)
+        self.assertEqual(self.operations_called[0][0].name, 'PutObject')
+        self.assertEqual(
+            self.operations_called[0][1]['ChecksumAlgorithm'], 'SHA1'
+        )
+
+    def test_upload_with_checksum_algorithm_sha256(self):
+        full_path = self.files.create_file('foo.txt', 'contents')
+        cmdline = f'{self.prefix} {full_path} s3://bucket/key.txt --checksum-algorithm SHA256'
+        self.run_cmd(cmdline, expected_rc=0)
+        self.assertEqual(self.operations_called[0][0].name, 'PutObject')
+        self.assertEqual(
+            self.operations_called[0][1]['ChecksumAlgorithm'], 'SHA256'
+        )
+
+    def test_upload_with_checksum_algorithm_sha512(self):
+        full_path = self.files.create_file('foo.txt', 'contents')
+        cmdline = f'{self.prefix} {full_path} s3://bucket/key.txt --checksum-algorithm SHA512'
+        self.run_cmd(cmdline, expected_rc=0)
+        self.assertEqual(self.operations_called[0][0].name, 'PutObject')
+        self.assertEqual(
+            self.operations_called[0][1]['ChecksumAlgorithm'], 'SHA512'
+        )
+
     def test_upload_with_checksum_algorithm_crc32c(self):
         full_path = self.files.create_file('foo.txt', 'contents')
         cmdline = f'{self.prefix} {full_path} s3://bucket/key.txt --checksum-algorithm CRC32C'
@@ -1186,6 +1410,33 @@ class TestCPCommand(BaseCPCommandTest):
         self.assertEqual(self.operations_called[0][0].name, 'PutObject')
         self.assertEqual(
             self.operations_called[0][1]['ChecksumAlgorithm'], 'CRC64NVME'
+        )
+
+    def test_upload_with_checksum_algorithm_xxhash3(self):
+        full_path = self.files.create_file('foo.txt', 'contents')
+        cmdline = f'{self.prefix} {full_path} s3://bucket/key.txt --checksum-algorithm XXHASH3'
+        self.run_cmd(cmdline, expected_rc=0)
+        self.assertEqual(self.operations_called[0][0].name, 'PutObject')
+        self.assertEqual(
+            self.operations_called[0][1]['ChecksumAlgorithm'], 'XXHASH3'
+        )
+
+    def test_upload_with_checksum_algorithm_xxhash64(self):
+        full_path = self.files.create_file('foo.txt', 'contents')
+        cmdline = f'{self.prefix} {full_path} s3://bucket/key.txt --checksum-algorithm XXHASH64'
+        self.run_cmd(cmdline, expected_rc=0)
+        self.assertEqual(self.operations_called[0][0].name, 'PutObject')
+        self.assertEqual(
+            self.operations_called[0][1]['ChecksumAlgorithm'], 'XXHASH64'
+        )
+
+    def test_upload_with_checksum_algorithm_xxhash128(self):
+        full_path = self.files.create_file('foo.txt', 'contents')
+        cmdline = f'{self.prefix} {full_path} s3://bucket/key.txt --checksum-algorithm XXHASH128'
+        self.run_cmd(cmdline, expected_rc=0)
+        self.assertEqual(self.operations_called[0][0].name, 'PutObject')
+        self.assertEqual(
+            self.operations_called[0][1]['ChecksumAlgorithm'], 'XXHASH128'
         )
 
     def test_multipart_upload_with_checksum_algorithm_crc32(self):
@@ -1555,7 +1806,10 @@ class TestCpCommandWithRequesterPayer(BaseCPCommandTest):
         self.assert_operations_called(
             [
                 self.head_object_request(
-                    'mybucket', 'mykey', RequestPayer='requester'
+                    'mybucket',
+                    'mykey',
+                    RequestPayer='requester',
+                    ChecksumMode='ENABLED',
                 ),
                 self.get_object_request(
                     'mybucket', 'mykey', RequestPayer='requester'
@@ -1578,7 +1832,10 @@ class TestCpCommandWithRequesterPayer(BaseCPCommandTest):
         self.assert_operations_called(
             [
                 self.head_object_request(
-                    'mybucket', 'mykey', RequestPayer='requester'
+                    'mybucket',
+                    'mykey',
+                    RequestPayer='requester',
+                    ChecksumMode='ENABLED',
                 ),
                 self.get_object_request(
                     'mybucket',
@@ -1630,7 +1887,10 @@ class TestCpCommandWithRequesterPayer(BaseCPCommandTest):
         self.assert_operations_called(
             [
                 self.head_object_request(
-                    'sourcebucket', 'sourcekey', RequestPayer='requester'
+                    'sourcebucket',
+                    'sourcekey',
+                    RequestPayer='requester',
+                    ChecksumMode='ENABLED',
                 ),
                 self.copy_object_request(
                     'sourcebucket',
@@ -1659,7 +1919,10 @@ class TestCpCommandWithRequesterPayer(BaseCPCommandTest):
         self.assert_operations_called(
             [
                 self.head_object_request(
-                    'sourcebucket', 'sourcekey', RequestPayer='requester'
+                    'sourcebucket',
+                    'sourcekey',
+                    RequestPayer='requester',
+                    ChecksumMode='ENABLED',
                 ),
                 self.create_mpu_request(
                     'mybucket', 'mykey', RequestPayer='requester'
@@ -1828,7 +2091,11 @@ class TestAccesspointCPCommand(BaseCPCommandTest):
         self.run_cmd(cmdline, expected_rc=0)
         self.assert_operations_called(
             [
-                self.head_object_request(self.accesspoint_arn, 'mykey'),
+                self.head_object_request(
+                    self.accesspoint_arn,
+                    'mykey',
+                    ChecksumMode='ENABLED',
+                ),
                 self.get_object_request(self.accesspoint_arn, 'mykey'),
             ]
         )
@@ -1862,7 +2129,11 @@ class TestAccesspointCPCommand(BaseCPCommandTest):
         self.run_cmd(cmdline, expected_rc=0)
         self.assert_operations_called(
             [
-                self.head_object_request(self.accesspoint_arn, 'mykey'),
+                self.head_object_request(
+                    self.accesspoint_arn,
+                    'mykey',
+                    ChecksumMode='ENABLED',
+                ),
                 self.copy_object_request(
                     self.accesspoint_arn,
                     'mykey',
