@@ -25,6 +25,9 @@ jobs:
           git push "origin" "v2"
           
       - name: Trigger container image builds
-        run: ./scripts/trigger-image-builds
+        run: |
+          ./scripts/trigger-image-builds \
+            "${{ github.workflow }}" \
+            "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

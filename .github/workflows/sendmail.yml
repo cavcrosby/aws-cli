@@ -1,0 +1,28 @@
+name: Send an email
+
+on:
+  workflow_dispatch:
+    inputs:
+      workflow:
+        type: string
+        description: The name of the workflow calling this one
+        required: true
+      body:
+        type: string
+        description: Plain text body for the email
+        required: true
+
+jobs:
+  sendmail:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dawidd6/action-send-mail@v18
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: cavcrosby
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          subject: "[${{ github.repository }}] Message from: ${{ inputs.workflow }} - ${{ github.ref_name }} (${{ github.sha }})"
+          to: cavcrosby@gmail.com
+          from: Conner Crosby <cavcrosby@gmail.com>
+          body: ${{ inputs.body }}

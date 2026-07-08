@@ -9,6 +9,9 @@ set -eo pipefail
 PROGNAME="$(basename "$0")"
 readonly PROGNAME
 
+workflow_name="$1"
+workflow_run_url="$2"
+
 is_ge_version() {
     local version1="$1"
     local version2="$2"
@@ -22,6 +25,23 @@ is_ge_version() {
         | uniq --unique \
         | head --lines 1 \
         | grep --quiet "${version1}"
+}
+
+do_throttling() {
+    if [ "$(\
+        gh run list \
+            --repo "cavcrosby/aws-cli" \
+            --workflow "build-images.yml" \
+            --status "in_progress" \
+            --json "number" \
+        | yq \
+            --input-format "json" \
+            '[.[]] | flatten | length')" -ge 3 \
+    ]; then
+        return 0
+    else
+        return 1
+    fi
 }
 
 if ! [ "${GITHUB_ACTIONS}" ]; then
@@ -79,6 +99,9 @@ gh_tags="$(\
         "repos/aws/aws-cli/tags" \
         | yq --input-format "json" '[.[]] | flatten | .[].name' \
 )"
+
+did_throttling=0 # false
+counter=0
 for gh_tag in ${gh_tags}; do
     # version 2.33.12 is the starting/base version to build
     if is_ge_version "${gh_tag}" "2.33.12"; then
@@ -93,6 +116,14 @@ for gh_tag in ${gh_tags}; do
             )" \
             | grep --quiet "${gh_tag}";
         then
+            if do_throttling; then
+                did_throttling=1 # true
+                sleep 60
+                while do_throttling; do
+                    sleep 60
+                done
+            fi
+
             if [ "${gh_tag}" = \
                 "$(\
                     printf \
@@ -113,8 +144,27 @@ for gh_tag in ${gh_tags}; do
                     --field version="${gh_tag}" \
                     "build-images.yml"
             fi
+
+            : $(( counter++ ))
+            if [ "${counter}" -ge 100 ]; then
+                gh workflow run \
+                    --repo "cavcrosby/aws-cli" \
+                    --field workflow="${workflow_name}" \
+                    --field body="This run went over the max number of child workflows, which is likely a problem: ${workflow_run_url}." \
+                    "sendmail.yml"
+
+                break
+            fi
         fi
     fi
 done
+
+if (( did_throttling )); then
+    gh workflow run \
+        --repo "cavcrosby/aws-cli" \
+        --field workflow="${workflow_name}" \
+        --field body="Throttling occurred for this run, which could be a problem: ${workflow_run_url}." \
+        "sendmail.yml"
+fi
 
 exit 0
