@@ -49,7 +49,7 @@ while \
             yq eval-all \
                 --input-format "json" \
                 --output-format "json" \
-                '. as $item ireduce ({}; . * $item)' \
+                '. as $item ireduce ({}; . *+ $item)' \
                 <(printf "%s\n" "${dockerhub_tags}") \
                 <(printf "%s\n" "${paginate}") \
         )"
