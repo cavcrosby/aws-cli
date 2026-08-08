@@ -34,9 +34,7 @@ do_throttling() {
             --workflow "build-images.yml" \
             --status "in_progress" \
             --json "number" \
-        | yq \
-            --input-format "json" \
-            '[.[]] | flatten | length')" -ge 3 \
+        | yq '[.[]] | flatten | length')" -ge 3 \
     ]; then
         return 0
     else
@@ -59,7 +57,6 @@ while \
         "${paginate}" \
         | yq \
             --exit-status \
-            --input-format "json" \
             '.message' \
             > "/dev/null" \
             2>&1; \
@@ -67,7 +64,6 @@ while \
         # shellcheck disable=SC2016 # yq exp does not need expansion
         dockerhub_tags="$(\
             yq eval-all \
-                --input-format "json" \
                 --output-format "json" \
                 '. as $item ireduce ({}; . *+ $item)' \
                 <(printf "%s\n" "${dockerhub_tags}") \
@@ -82,7 +78,7 @@ while \
         )"
 done
 
-msg="$(printf "%s\n" "${paginate}" | yq --input-format "json" '.message')"
+msg="$(printf "%s\n" "${paginate}" | yq '.message')"
 if [ "${msg}" != "httperror 404: object not found" ]; then
         printf \
             "%s: %s\n" \
@@ -97,7 +93,7 @@ gh_tags="$(\
     gh api \
         --paginate \
         "repos/aws/aws-cli/tags" \
-        | yq --input-format "json" '[.[]] | flatten | .[].name' \
+        | yq '[.[]] | flatten | .[].name' \
 )"
 
 did_throttling=0 # false
