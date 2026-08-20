@@ -2,6 +2,32 @@
 CHANGELOG
 =========
 
+2.36.27
+=======
+
+* api-change:``vpc-lattice``: Amazon VPC Lattice now supports modification of private DNS options on Service Network VPC Associations
+* api-change:``eks``: Adds support for EKS cluster certificate authorities (CA)
+* api-change:``redshift``: Amazon Redshift enhanced System Table retention that allows customers to store their system table data directly in S3 Tables in customer's account instead of Redshift Managed Storage
+* api-change:``account-access``: Adds throttling exceptions to operation outputs that were previously inconsistent with other operations.
+* api-change:``bedrock-agentcore``: AgentCore Memory now supports Flexible Namespaces and Non-Conversational Payloads in CreateEvent API
+* api-change:``medialive``: AWS Elemental MediaLive now supports video cropping and output positioning. Use cropRectangle and outputPositionRectangle to position the encoded video within the output frame, with the surrounding area filled with black.
+* api-change:``bedrock-agentcore-control``: AgentCore Memory now supports Flexible Namespaces
+* api-change:``batch``: AWS Batch now supports managing CloudWatch Container Insights on compute environments via CreateComputeEnvironment and UpdateComputeEnvironment.
+* api-change:``redshift-serverless``: Amazon Redshift Enhanced System Table Retention that allows customers to store their system table data directly in S3 Tables in customer's account instead of Redshift Managed Storage
+
+
+2.36.26
+=======
+
+* api-change:``workspaces``: Amazon WorkSpaces now supports nested virtualization, allowing you to run hypervisors and virtualization-based workloads within your WorkSpaces. You can enable or disable nested virtualization when creating a WorkSpace or by modifying an existing WorkSpace's properties.
+* api-change:``batch``: Update AWS Batch documentation with newer Fargate Supported configurations, notes, and fix broken Docker link re-directs.
+* api-change:``outposts``: AWS Outposts now supports VPC Endpoint configuration in CreatePrivateConnectivityConfig, enabling scoped private connectivity with provisioning role creation for secure outpost installations
+* api-change:``entityresolution``: Added ResourceNotFoundException to DeleteSchemaMapping, DeleteMatchingWorkflow, DeleteIdMappingWorkflow, and DeleteIdNamespace. These operations now return a 404 ResourceNotFoundException (previously a 200 Success) when the target resource does not exist.
+* api-change:``marketplace-catalog``: Introducing two new APIs, DescribeAssessment and ListAssessments. These APIs expose validation issues on Marketplace resources. The validation issues are exposed via a newly created resource called Assessment.
+* api-change:``ec2``: Doc release for CreateImage support for instances with local snapshots in Outpost
+* api-change:``medialive``: AWS Elemental MediaLive now supports SCTE-35 marker passthrough without IDR frame insertion for CMAF Ingest, MediaPackage V2, and transport stream outputs.
+
+
 2.36.25
 =======
 
