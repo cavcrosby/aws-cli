@@ -33,7 +33,7 @@ repos:
         args: [ --fix ]
       - id: ruff-format
   - repo: https://github.com/cavcrosby/shellcheck-precommit.git
-    rev: v0.12.0
+    rev: v0.13.0
     hooks:
       - id: shellcheck
         files: ^scripts/trigger-image-builds$
