@@ -1,7 +1,6 @@
 exclude: "\
     ^(\
     .changes|\
-    .github|\
     CHANGELOG.rst|\
     configure|\
     awscli/examples|\
@@ -37,3 +36,13 @@ repos:
     hooks:
       - id: shellcheck
         files: ^scripts/trigger-image-builds$
+  - repo: https://github.com/betterleaks/betterleaks.git
+    rev: v1.8.1
+    hooks:
+      - id: betterleaks
+        files: |
+          (?x)^(
+            .github/workflows/build-images.yml|
+            .github/workflows/sendmail.yml|
+            .github/workflows/sync-upstream.yml
+          )$
