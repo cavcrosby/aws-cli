@@ -23,7 +23,7 @@ jobs:
           git config set "user.email" "41898282+github-actions[bot]@users.noreply.github.com"
           git merge "upstream/v2"
           git push "origin" "v2"
-          
+
       - name: Trigger container image builds
         run: |
           ./scripts/trigger-image-builds \
