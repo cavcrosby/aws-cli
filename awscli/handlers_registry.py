@@ -480,6 +480,9 @@ PLUGIN_REGISTRY = {
     'building-argument-table.route53domains.view-billing': [
         ('awscli.customizations.argrename', 'register_arg_renames')
     ],
+    'building-argument-table.rtbfabric.get-available-module-version': [
+        ('awscli.customizations.argrename', 'register_arg_renames')
+    ],
     'building-argument-table.s3api.select-object-content': [
         ('awscli.customizations.s3events', 'register_event_stream_arg')
     ],
@@ -534,6 +537,15 @@ PLUGIN_REGISTRY = {
     'building-command-table': [
         ('awscli.customizations.waiters', 'register_add_waiters'),
         ('awscli.alias', 'register_alias_commands'),
+    ],
+    'building-command-table.agent-registry': [
+        ('awscli.customizations.agentregistry', 'initialize')
+    ],
+    'building-argument-table.agent-registry': [
+        ('awscli.customizations.agentregistry', 'initialize')
+    ],
+    'calling-command.agent-registry': [
+        ('awscli.customizations.agentregistry', 'initialize')
     ],
     'building-command-table.agent-toolkit': [
         (
